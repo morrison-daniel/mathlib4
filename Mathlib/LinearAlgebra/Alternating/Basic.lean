@@ -307,6 +307,18 @@ instance instInhabited : Inhabited (M [⋀^ι]→ₗ[R] N) :=
 instance instAddCommMonoid : AddCommMonoid (M [⋀^ι]→ₗ[R] N) := fast_instance%
   coe_injective.addCommMonoid _ rfl (fun _ _ => rfl) fun _ _ => coeFn_smul _ _
 
+/-- Coercion of a multilinear map to a function as an additive monoid homomorphism. -/
+@[simps] def coeAddMonoidHom : (M [⋀^ι]→ₗ[R] N) →+ ((ι → M) → N) where
+  toFun := DFunLike.coe; map_zero' := rfl; map_add' _ _ := rfl
+
+@[simp]
+theorem coe_sum {α : Type*} (f : α → (M [⋀^ι]→ₗ[R] N)) (s : Finset α) :
+    ⇑(∑ a ∈ s, f a) = ∑ a ∈ s, ⇑(f a) :=
+  map_sum coeAddMonoidHom f s
+
+theorem sum_apply {α : Type*} (f : α → (M [⋀^ι]→ₗ[R] N)) (m : ι → M) {s : Finset α} :
+    (∑ a ∈ s, f a) m = ∑ a ∈ s, f a m := by simp
+
 instance instNeg : Neg (M [⋀^ι]→ₗ[R] N') :=
   ⟨fun f =>
     { -(f : MultilinearMap R (fun _ : ι => M) N') with

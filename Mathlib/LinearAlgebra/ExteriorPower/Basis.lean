@@ -9,6 +9,7 @@ public import Mathlib.LinearAlgebra.ExteriorPower.Pairing
 public import Mathlib.Order.Extension.Well
 public import Mathlib.RingTheory.Finiteness.Subalgebra
 public import Mathlib.LinearAlgebra.LinearIndependent.Lemmas
+public import Mathlib.LinearAlgebra.Dual.Basis
 
 /-!
 # Constructs a basis for exterior powers
@@ -162,6 +163,45 @@ lemma basis_repr {I : Type*} [LinearOrder I] (b : Basis I R M)
   ext t
   by_cases hst : s = t <;> simp [hst]
 
+lemma dualBasis_eq_ιMulti_dual {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
+    (s : {s : Finset I // s.card = n}) :
+    (Basis.exteriorPower R n b).dualBasis s = ιMulti_dual R n b s := by
+  rw [Basis.coe_dualBasis, basis_coord]
+
+lemma dualBasis_apply_eq_det {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
+    (s : {s : Finset I // s.card = n}) (v : Fin n → M) :
+    (Basis.exteriorPower R n b).dualBasis s (ιMulti R n v) =
+    (Matrix.of fun i j => b.coord (Finset.orderIsoOfFin s.1 s.2 j) (v i)).det := by
+  rw [dualBasis_eq_ιMulti_dual, ιMulti_dual_apply_ιMulti]
+
+/-! ### Linear equivalence with `AlternatingMap`. -/
+
+noncomputable def toAlternatingMap {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M) :
+    ⋀[R]^n M ≃ₗ[R] (M [⋀^Fin n]→ₗ[R] R) :=
+  (Basis.exteriorPower R n b).toDualEquiv.trans <| alternatingMapLinearEquiv.symm
+
+lemma toAlternatingMap_basis {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
+    (s : {s : Finset I // s.card = n}) :
+    toAlternatingMap R n b (Basis.exteriorPower R n b s) =
+    (((Basis.exteriorPower R n b).coord s).compAlternatingMap (ιMulti R n)) := by
+  ext
+  rw [toAlternatingMap, LinearEquiv.trans_apply, Basis.toDualEquiv_apply, Basis.coe_toDual_self,
+    alternatingMapLinearEquiv_symm_apply]
+
+lemma toAlternatingMap_basis_apply {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
+    (s : {s : Finset I // s.card = n}) (a : Fin n → M) :
+    toAlternatingMap R n b (Basis.exteriorPower R n b s) a =
+    (Basis.exteriorPower R n b).coord s (ιMulti R n a) := by
+  rw [toAlternatingMap_basis, LinearMap.compAlternatingMap_apply]
+
+lemma toAlternatingMap_symm_coord {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
+    (s : {s : Finset I // s.card = n}) (f : M [⋀^Fin n]→ₗ[R] R) :
+    (Basis.exteriorPower R n b).coord s ((toAlternatingMap R n b).symm f) =
+    f (fun i ↦ b (Finset.orderIsoOfFin s.1 s.2 i)) := by
+  rw [toAlternatingMap, LinearEquiv.trans_symm, LinearEquiv.symm_symm, LinearEquiv.trans_apply,
+    Basis.coord_toDualEquiv_symm_apply, Basis.coord_apply, Basis.dualBasis_repr, basis_apply,
+    ιMulti_family, alternatingMapLinearEquiv_apply_ιMulti]
+
 /-! ### Freeness and dimension of `⋀[R]^n M. -/
 
 /-- If `M` is a free module, then so is its `n`th exterior power. -/
@@ -181,6 +221,20 @@ lemma finrank_eq [hfree : Module.Free R M] [Module.Finite R M] :
   let B := Basis.exteriorPower R n hfree.chooseBasis
   rw [Module.finrank_eq_card_basis hfree.chooseBasis,
     Module.finrank_eq_card_basis B, Fintype.card_finset_len]
+
+@[simp]
+lemma bot_of_degree_gt_finrank [Module.Free R M] [Module.Finite R M] (hn : n > finrank R M) :
+    ⋀[R]^n M = ⊥ := by
+  rw [← Submodule.subsingleton_iff_eq_bot, ← Module.finrank_eq_zero_iff_of_free R, finrank_eq]
+  exact Nat.choose_eq_zero_of_lt hn
+
+@[simp]
+lemma zero_of_degree_gt_finrank [Module.Free R M] [Module.Finite R M] (hn : n > finrank R M)
+    (x : ⋀[R]^n M) : x = 0 := by
+  rw [Subtype.ext_iff, ZeroMemClass.coe_zero, ← Submodule.mem_bot R,
+    ← bot_of_degree_gt_finrank R n hn]
+  exact Submodule.coe_mem x
+
 
 /-! Results that only hold over a field. -/
 

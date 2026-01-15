@@ -311,6 +311,18 @@ theorem ιMulti_succ_curryLeft {n : ℕ} (m : M) :
       (LinearMap.mulLeft R (ι R m)).compAlternatingMap (ιMulti R n) := by
   ext; simp
 
+lemma ιMulti_eq_zero_of_not_inj {n : ℕ} {v : Fin n → M} (hv : ¬Function.Injective v) :
+    ιMulti R n v = 0 :=
+  AlternatingMap.map_eq_zero_of_not_injective (ιMulti R n) v hv
+
+lemma ιMulti_mul_ιMulti {m n : ℕ} (a : Fin m → M) (b : Fin n → M) :
+    ιMulti R m a * ιMulti R n b = ιMulti R (m+n) (Fin.append a b) := by
+  simp only [ιMulti_apply]
+  rw [show (fun i => (ι R) (Fin.append a b i)) = (ι R) ∘ Fin.append a b by ext; simp]
+  rw [← List.map_ofFn, List.ofFn_fin_append, List.map_append, List.prod_append]
+  simp only [List.map_ofFn]
+  congr
+
 variable (R)
 
 /-- The image of `ExteriorAlgebra.ιMulti R n` is contained in the `n`th exterior power. -/
@@ -337,11 +349,68 @@ lemma ιMulti_span_fixedDegree (n : ℕ) :
   obtain ⟨v, hv⟩ := (f i).prop
   rw [← hv, ι_leftInverse]
 
+lemma degree_mul {m n : ℕ} (x y : ExteriorAlgebra R M) (hx : x ∈ ⋀[R]^m M) (hy : y ∈ ⋀[R]^n M) :
+    x * y ∈ ⋀[R]^(m+n) M := by
+  apply Submodule.span_induction₂ (R := R) (s := Set.range (ιMulti R m))
+    (t := Set.range (ιMulti R n)) (p := fun x y hx hy => x * y ∈ ⋀[R]^(m+n) M)
+  · rintro _ _ ⟨a, rfl⟩ ⟨b, rfl⟩; rw [ιMulti_mul_ιMulti]; apply ιMulti_range; simp
+  · intros; simp
+  · intros; simp
+  · rintro _ _ _ _ _ _ h₁ h₂; rw [add_mul]; exact Submodule.add_mem _ h₁ h₂
+  · rintro _ _ _ _ _ _ h₁ h₂; rw [mul_add]; exact Submodule.add_mem _ h₁ h₂
+  · rintro _ _ _ _ _ h; rw [smul_mul_assoc]; exact Submodule.smul_mem _ _ h
+  · rintro _ _ _ _ _ h; rw [mul_smul_comm]; exact Submodule.smul_mem _ _ h
+  · rw [ιMulti_span_fixedDegree]; trivial
+  · rw [ιMulti_span_fixedDegree]; trivial
+
 /-- Given a linearly ordered family `v` of vectors of `M` and a natural number `n`, produce the
 family of `n`fold exterior products of elements of `v`, seen as members of the exterior algebra. -/
 abbrev ιMulti_family (n : ℕ) {I : Type*} [LinearOrder I] (v : I → M)
     (s : {s : Finset I // Finset.card s = n}) : ExteriorAlgebra R M :=
   ιMulti R n fun i => v (Finset.orderIsoOfFin _ s.prop i)
+
+lemma ιMulti_family_mul_of_not_disjoint {m n : ℕ} {I : Type*} [LinearOrder I] (v : I → M)
+    (s : {s : Finset I // Finset.card s = m}) (t : {s : Finset I // Finset.card s = n})
+    (h : ¬Disjoint s.val t.val) :
+    ιMulti_family R m v s * ιMulti_family R n v t = 0 := by
+  rw [Finset.not_disjoint_iff] at h
+  obtain ⟨i, his, hit⟩ := h
+  simp only [ιMulti_family, ιMulti_mul_ιMulti]
+  apply AlternatingMap.map_eq_zero_of_eq
+    (i := Fin.castAdd n ((Finset.orderIsoOfFin _ s.prop).symm ⟨i, his⟩))
+    (j := Fin.natAdd m ((Finset.orderIsoOfFin _ t.prop).symm ⟨i, hit⟩))
+  · simp only [Fin.append_left, Fin.append_right, OrderIso.apply_symm_apply]
+  · apply Fin.ne_of_val_ne
+    apply ne_of_lt
+    apply lt_of_lt_of_le (b := m) <;> simp
+
+def ιMulti_perm {m n : ℕ} {I : Type*} [LinearOrder I] {s : {s : Finset I // Finset.card s = m}}
+    {t : {s : Finset I // Finset.card s = n}} (h : Disjoint s.val t.val) :
+    Equiv.Perm (Fin (m + n)) :=
+  finSumFinEquiv.symm.trans ((Equiv.sumCongr
+  (Finset.orderIsoOfFin s.val s.prop).toEquiv.symm
+  (Finset.orderIsoOfFin t.val t.prop).toEquiv.symm).symm.trans
+  ((Equiv.Finset.union _ _ h).trans
+  ((Finset.orderIsoOfFin (s.val ∪ t.val)
+  (by rw [Finset.card_union_of_disjoint h, s.prop, t.prop]))).toEquiv.symm))
+
+lemma ιMulti_family_mul_of_disjoint {m n : ℕ} {I : Type*} [LinearOrder I] (v : I → M)
+    (s : {s : Finset I // Finset.card s = m}) (t : {s : Finset I // Finset.card s = n})
+    (h : Disjoint s.val t.val) :
+    ιMulti_family R m v s * ιMulti_family R n v t = (ιMulti_perm h).sign •
+    ιMulti_family R (m + n) v ⟨s ∪ t, by rw [Finset.card_union_of_disjoint h, s.prop, t.prop]⟩ := by
+  simp only [ιMulti_family, ιMulti_mul_ιMulti]
+  rw [← AlternatingMap.map_perm, ιMulti_perm]
+  congr
+  ext i
+  by_cases hi : i < m
+  · rw [← Fin.castAdd_castLT n i hi, Fin.append_left]
+    congr 1
+    simp [- Fin.castAdd_castLT]
+  · push_neg at hi
+    rw [← Fin.natAdd_subNat_cast hi, Fin.append_right]
+    congr 1
+    simp [- Fin.natAdd_subNat_cast]
 
 variable {R}
 

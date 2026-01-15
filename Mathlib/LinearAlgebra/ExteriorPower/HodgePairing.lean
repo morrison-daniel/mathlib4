@@ -6,6 +6,7 @@ Authors: Daniel Morrison
 module
 
 public import Mathlib.LinearAlgebra.ExteriorPower.Basis
+public import Mathlib.LinearAlgebra.ExteriorPower.Mul
 public import Mathlib.LinearAlgebra.PerfectPairing.Basic
 
 /-!
@@ -96,112 +97,66 @@ variable {R M : Type*} {m n : ℕ}
   [Field R] [AddCommGroup M] [Module R M]
   {I : Type*} [LinearOrder I] [Fintype I]
 
-instance instHMul [h : Fact (m + n = finrank R M)] :
-    HMul (⋀[R]^m M) (⋀[R]^n M) (⋀[R]^(finrank R M) M) where
-  hMul x y := ⟨x.val * y.val, mul_mem_of_add_eq x y h.out⟩
 
-variable [Fact (m + n = finrank R M)]
+variable (b : Basis I R M)
 
-@[simp]
-lemma hmul_val (x : ⋀[R]^m M) (y : ⋀[R]^n M) : (x * y).val = x.val * y.val := rfl
+def hodgePairing (h : m + n = finrank R M) : ⋀[R]^m M →ₗ[R] ⋀[R]^n M →ₗ[R] R :=
+  LinearMap.compr₂ (mulLeft R M m n) ((cast R h).trans (volEquiv b))
 
-@[simp]
-lemma hmul_add (x : ⋀[R]^m M) (y z : ⋀[R]^n M) : x * (y + z) = x * y + x * z := by
-  ext
-  simp [mul_add]
+def hodgePairing_apply_apply (x : ⋀[R]^m M) (y : ⋀[R]^n M) (h : m + n = finrank R M) :
+    hodgePairing b h x y = volEquiv b (cast R h (x * y)) := rfl
 
-@[simp]
-lemma add_hmul (x y : ⋀[R]^m M) (z : ⋀[R]^n M) : (x + y) * z = x * z + y * z := by
-  ext
-  simp [add_mul]
-
-@[simp]
-lemma smul_hmul (r : R) (x : ⋀[R]^m M) (y : ⋀[R]^n M) : (r • x) * y = r • (x * y) := by
-  ext
-  simp
-
-@[simp]
-lemma hmul_smul (r : R) (x : ⋀[R]^m M) (y : ⋀[R]^n M) : x * (r • y) = r • (x * y) := by
-  ext
-  simp
-
-def mulLeft [Fact (m + n = finrank R M)] :
-    (⋀[R]^m M) →ₗ[R] (⋀[R]^n M →ₗ[R] ⋀[R]^(finrank R M) M) where
-  toFun x := {
-    toFun y := x * y
-    map_add' := by intros; rw [hmul_add]
-    map_smul' := by intros; rw [RingHom.id_apply, hmul_smul] }
-  map_add' := by intros; ext; simp
-  map_smul' := by intros; ext; simp
-
-lemma coe_mulLeft_eq_mulLeft (x : ⋀[R]^m M) (y : ⋀[R]^n M) :
-    (mulLeft x y).val = LinearMap.mulLeft R x.val y.val := by rfl
- -- x = 0 iff coord i x = 0; coord i x = ιMulti_dual; ιMulti_dual = toDual
-lemma mulLeft_injective [Fact (m + n = finrank R M)] :
-    Function.Injective (mulLeft (m := m) (n := n) (R := R) (M := M)) := by
-  intro x y h
-  simp [LinearMap.ext_iff, Subtype.ext_iff, coe_mulLeft_eq_mulLeft] at h
-  ext
-
-  sorry
-
-
-def mulRight [Fact (m + n = finrank R M)] :
-    (⋀[R]^n M) →ₗ[R] (⋀[R]^m M →ₗ[R] ⋀[R]^(finrank R M) M) where
-  toFun y := {
-    toFun x := x * y
-    map_add' := by intros; rw [add_hmul]
-    map_smul' := by intros; rw [RingHom.id_apply, smul_hmul] }
-  map_add' := by intros; ext; simp
-  map_smul' := by intros; ext; simp
-
-variable (b : Basis I R M) [FiniteDimensional R M]
-
-def hodgePairing : ⋀[R]^m M →ₗ[R] ⋀[R]^n M →ₗ[R] R := mulLeft.compr₂ (volEquiv b)
-
-lemma hodgePairing_flip :
-    (hodgePairing (m := m) (n := n) b).flip = mulRight.compr₂ (volEquiv b) := by
-  rw [hodgePairing]
-  apply LinearMap.ext
-  rintro x
-  apply LinearMap.ext
-  rintro y
-  simp [mulLeft, mulRight]
-
-/-
-def hodgePairing : ⋀[R]^m M →ₗ[R] ⋀[R]^n M →ₗ[R] R where
-  toFun x := {
-    toFun y := volEquiv b (x * y)
-    map_add' _ _ := by rw [← map_add]; congr; simp [mul_add]
-    map_smul' _ _ := by rw [RingHom.id_apply, ← map_smul]; congr; simp}
-  map_add' _ _ := by apply LinearMap.ext; intros; simp [← map_add, add_mul]
-  map_smul' _ _ := by apply LinearMap.ext; intros; simp [- smul_eq_mul, ← map_smul]
-
-def hodgePairing : ⋀[R]^m M →ₗ[R] ⋀[R]^n M →ₗ[R] R where
-  toFun x := {
-    toFun y := volEquiv b ⟨x * y, mul_mem_of_add_eq x y h⟩
-    map_add' _ _ := by rw [← map_add]; congr; simp [mul_add]
-    map_smul' _ _ := by rw [RingHom.id_apply, ← map_smul]; congr; simp}
-  map_add' _ _ := by apply LinearMap.ext; intros; simp [← map_add, add_mul]
-  map_smul' _ _ := by apply LinearMap.ext; intros; simp [- smul_eq_mul, ← map_smul]
--/
-
-def hodgePairing_apply_apply (x : ⋀[R]^m M) (y : ⋀[R]^n M) :
-    hodgePairing b x y = volEquiv b (x * y) := rfl
+lemma hodgePairing_flip (h : m + n = finrank R M) : (hodgePairing b h).flip =
+    LinearMap.compr₂ (mulRight R M m n) ((cast R h).trans (volEquiv b)) := by
+  ext x y
+  simp [hodgePairing_apply_apply, mulRight]
 
 open LinearMap
 
-lemma hodgePairing_injective : Function.Injective (hodgePairing (m := m) (n := n) b) := by
+lemma hodgePairing_injective [NoZeroDivisors R] [CharZero R] [StrongRankCondition R]
+    (h : m + n = finrank R M) :
+    Function.Injective (hodgePairing b h) := by
   rw [hodgePairing]
   apply LinearMap.injective_compr₂_of_injective
-  · rw [← LinearMap.ker_eq_bot]
-    sorry
-  · exact (volEquiv b).injective
+  · exact mulLeft_injective b (le_of_eq h)
+  · exact ((cast R h).trans (volEquiv b)).injective
 
-instance instPerfPair : LinearMap.IsPerfPair (hodgePairing (m := m) (n := n) b) := by
+lemma hodgePairing_flip_injective [NoZeroDivisors R] [CharZero R] [StrongRankCondition R]
+    (h : m + n = finrank R M) :
+    Function.Injective (hodgePairing b h).flip := by
+  rw [hodgePairing_flip]
+  apply LinearMap.injective_compr₂_of_injective
+  · exact mulRight_injective b (le_of_eq h)
+  · exact ((cast R h).trans (volEquiv b)).injective
+
+variable [FiniteDimensional R M] [NoZeroDivisors R] [CharZero R] [StrongRankCondition R]
+
+instance instPerfPair (h : m + n = finrank R M) : IsPerfPair (hodgePairing b h) := by
   apply IsPerfPair.of_injective
-  ·
-  ·
+  · exact hodgePairing_injective b h
+  · exact hodgePairing_flip_injective b h
+
+def hodgeStar (h : m + n = finrank R M) : ⋀[R]^m M ≃ₗ[R] ⋀[R]^n M :=
+    (hodgePairing b h).toPerfPair.trans (Basis.exteriorPower R n b).toDualEquiv.symm
+
+lemma hodgeStar_apply (h : m + n = finrank R M) (x : ⋀[R]^m M) :
+    hodgeStar b h x = (Basis.exteriorPower R n b).toDualEquiv.symm (hodgePairing b h x) := rfl
+
+lemma hodgeStar_eq (h : m + n = finrank R M) (x : ⋀[R]^m M) (y : ⋀[R]^n M) :
+    hodgeStar b h x = y ↔ cast R h (x * y) = b.vol := by
+  rw [hodgeStar_apply, hodgePairing]
+  constructor
+  · rintro rfl
+    ext
+    rw [val_cast, hmul_val]
+    sorry
+  · intro h
+    rw [LinearEquiv.symm_apply_eq, Basis.toDualEquiv_apply]
+    apply Module.Basis.ext (Basis.exteriorPower R n b)
+    intro s
+    rw [compr₂_apply, LinearEquiv.coe_coe, LinearEquiv.trans_apply, Module.Basis.toDual_apply_left]
+    rw [mulLeft_apply, ← LinearEquiv.eq_symm_apply, volEquiv_symm_apply, ← h, ← map_smul]
+    congr
     sorry
 
 end hodgePairing
