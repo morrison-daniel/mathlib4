@@ -103,10 +103,10 @@ def mulRight : (⋀[R]^n M) →ₗ[R] (⋀[R]^m M →ₗ[R] ⋀[R]^(m + n) M) wh
   map_add' := by intros; ext; simp
   map_smul' := by intros; ext; simp
 
+lemma mulRight_apply : mulRight R M m n y x = x * y := rfl
+
 lemma coe_mulRight_eq_mulRight :
     (mulRight R M m n y x).val = LinearMap.mulRight R y.val x.val := by rfl
-
-lemma mulRight_apply : mulRight R M m n y x = x * y := rfl
 
 end ring
 
@@ -165,29 +165,16 @@ lemma mulLeft_injective [Fintype I] [NoZeroDivisors R] [CharZero R] [StrongRankC
     by_cases hs't : Disjoint s'.val t.val
     · rw [basis_apply, basis_apply, ιMulti_family_mul_of_disjoint _ s' t hs't, map_smul, ← mul_smul]
       apply smul_eq_zero_of_right
-      rw [← basis_apply, Basis.coord_apply, Module.Basis.repr_self, Finsupp.single_apply_eq_zero]
-      intro hss't
-      by_contra
+      rw [← basis_apply, Basis.coord_apply, Module.Basis.repr_self]
+      apply Finsupp.single_eq_of_ne
+      by_contra hss't
+      rw [Subtype.mk.injEq, ← Finset.coe_inj, Finset.coe_union, Finset.coe_union] at hss't
       apply hs'
-      rw [Subtype.mk.injEq] at hss't
-      ext i
-      constructor
-      · intro hi
-        have : i ∈ s.val ∪ t.val := by
-          rw [hss't]
-          exact Finset.mem_union_left (↑t) hi
-        rw [Finset.mem_union_of_disjoint h, xor_iff_iff_not] at this
-        have : i ∈ s'.val ∪ t.val := Finset.mem_union_left (↑t) hi
-        rw [Finset.mem_union_of_disjoint hs't, xor_iff_iff_not] at this
-        aesop
-      · intro hi
-        have : i ∈ s'.val ∪ t.val := by
-          rw [← hss't]
-          exact Finset.mem_union_left (↑t) hi
-        rw [Finset.mem_union_of_disjoint hs't, xor_iff_iff_not] at this
-        have : i ∈ s.val ∪ t.val := Finset.mem_union_left (↑t) hi
-        rw [Finset.mem_union_of_disjoint h, xor_iff_iff_not] at this
-        aesop
+      rw [Subtype.ext_iff, ← Finset.subset_iff_eq_of_card_le (by simp [s.prop, s'.prop]),
+        ← Finset.coe_subset]
+      apply Disjoint.subset_left_of_subset_union (u := t.val)
+      · simp only [hss't, Set.subset_union_left]
+      · simp only [Finset.disjoint_coe, hs't]
     · rw [basis_apply, basis_apply, ιMulti_family_mul_of_not_disjoint _ s' t hs't]
       simp
 
@@ -229,29 +216,16 @@ lemma mulRight_injective [Fintype I] [NoZeroDivisors R] [CharZero R] [StrongRank
     by_cases hs't : Disjoint t.val s'.val
     · rw [basis_apply, basis_apply, ιMulti_family_mul_of_disjoint _ t s' hs't, map_smul, ← mul_smul]
       apply smul_eq_zero_of_right
-      rw [← basis_apply, Basis.coord_apply, Module.Basis.repr_self, Finsupp.single_apply_eq_zero]
-      intro hss't
-      by_contra
+      rw [← basis_apply, Basis.coord_apply, Module.Basis.repr_self]
+      apply Finsupp.single_eq_of_ne
+      by_contra hss't
+      rw [Subtype.mk.injEq, ← Finset.coe_inj, Finset.coe_union, Finset.coe_union] at hss't
       apply hs'
-      rw [Subtype.mk.injEq] at hss't
-      ext i
-      constructor
-      · intro hi
-        have : i ∈ t.val ∪ s.val := by
-          rw [hss't]
-          exact Finset.mem_union_right (↑t) hi
-        rw [Finset.mem_union_of_disjoint h, xor_iff_iff_not] at this
-        have : i ∈ t.val ∪ s'.val := Finset.mem_union_right (↑t) hi
-        rw [Finset.mem_union_of_disjoint hs't, xor_iff_iff_not] at this
-        aesop
-      · intro hi
-        have : i ∈ t.val ∪ s'.val := by
-          rw [← hss't]
-          exact Finset.mem_union_right (↑t) hi
-        rw [Finset.mem_union_of_disjoint hs't, xor_iff_iff_not] at this
-        have : i ∈ t.val ∪ s.val := Finset.mem_union_right (↑t) hi
-        rw [Finset.mem_union_of_disjoint h, xor_iff_iff_not] at this
-        aesop
+      rw [Subtype.ext_iff, ← Finset.subset_iff_eq_of_card_le (by simp [s.prop, s'.prop]),
+        ← Finset.coe_subset]
+      apply Disjoint.subset_right_of_subset_union (t := t.val)
+      · simp only [hss't, Set.subset_union_right]
+      · simp only [Finset.disjoint_coe, disjoint_comm, hs't]
     · rw [basis_apply, basis_apply, ιMulti_family_mul_of_not_disjoint _ t s' hs't]
       simp
 
