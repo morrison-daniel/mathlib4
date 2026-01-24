@@ -10,6 +10,7 @@ public import Mathlib.Order.Extension.Well
 public import Mathlib.RingTheory.Finiteness.Subalgebra
 public import Mathlib.LinearAlgebra.LinearIndependent.Lemmas
 public import Mathlib.LinearAlgebra.Dual.Basis
+public import Mathlib.LinearAlgebra.ExteriorPower.BasisIndex
 
 /-!
 # Constructs a basis for exterior powers
@@ -107,7 +108,7 @@ lemma ιMulti_family_linearIndependent_ofBasis {I : Type*} [LinearOrder I] (b : 
 /-- If `b` is a basis of `M` (indexed by a linearly ordered type), the basis of the `n`th
 exterior power of `M` formed by the `n`-fold exterior products of elements of `b`. -/
 noncomputable def _root_.Basis.exteriorPower {I : Type*} [LinearOrder I] (b : Basis I R M) :
-    Basis {a : Finset I // Finset.card a = n} R (⋀[R]^n M) :=
+    Basis (basisIndex I n) R (⋀[R]^n M) :=
   Basis.mk (ιMulti_family_linearIndependent_ofBasis _ _ _)
     (eq_top_iff.mp <| ιMulti_family_span_of_span R b.span_eq)
 
@@ -117,7 +118,7 @@ lemma coe_basis {I : Type*} [LinearOrder I] (b : Basis I R M) :
   Basis.coe_mk _ _
 
 @[simp]
-lemma basis_apply {I : Type*} [LinearOrder I] (b : Basis I R M) (s : {a : Finset I // a.card = n}) :
+lemma basis_apply {I : Type*} [LinearOrder I] (b : Basis I R M) (s : basisIndex I n) :
     Basis.exteriorPower R n b s = ιMulti_family R n b s := by
   rw [coe_basis]
 
@@ -126,7 +127,7 @@ basis of the `n`th exterior power of `M`, indexed by the set of finsets `s` of `
 `n`, then the coordinate function of `B` at `s` is the linear form on the `n`th exterior power
 defined by `b` and `s` in `exteriorPower.ιMulti_dual`. -/
 lemma basis_coord {I : Type*} [LinearOrder I] (b : Basis I R M)
-    (s : {a : Finset I // a.card = n}) :
+    (s : basisIndex I n) :
     Basis.coord (Basis.exteriorPower R n b) s = ιMulti_dual R n b s := by
   apply LinearMap.ext_on (ιMulti_family_span_of_span R (Basis.span_eq b))
   rintro x ⟨t, rfl⟩
@@ -137,7 +138,7 @@ lemma basis_coord {I : Type*} [LinearOrder I] (b : Basis I R M)
       Basis.repr_self, Finsupp.single_eq_of_ne (by rw [ne_eq]; exact heq)]
 
 lemma basis_repr_apply {I : Type*} [LinearOrder I] (b : Basis I R M) (x : ⋀[R]^n M)
-    (s : {a : Finset I // a.card = n}) :
+    (s : basisIndex I n) :
     Basis.repr (Basis.exteriorPower R n b) x s = ιMulti_dual R n b s x := by
   rw [← Basis.coord_apply]
   congr
@@ -145,31 +146,31 @@ lemma basis_repr_apply {I : Type*} [LinearOrder I] (b : Basis I R M) (x : ⋀[R]
 
 @[simp]
 lemma basis_repr_self {I : Type*} [LinearOrder I] (b : Basis I R M)
-    (s : {a : Finset I // a.card = n}) :
+    (s : basisIndex I n) :
     Basis.repr (Basis.exteriorPower R n b) (ιMulti_family R n b s) s = 1 := by
   rw [basis_repr_apply]
   exact ιMulti_dual_apply_diag R n b s
 
 @[simp]
 lemma basis_repr_ne {I : Type*} [LinearOrder I] (b : Basis I R M)
-    {s t : {a : Finset I // a.card = n}} (hst : s ≠ t) :
+    {s t : basisIndex I n} (hst : s ≠ t) :
     Basis.repr (Basis.exteriorPower R n b) (ιMulti_family R n b s) t = 0 := by
   rw [basis_repr_apply]
   exact ιMulti_dual_apply_nondiag R n b t s (id (Ne.symm hst))
 
 lemma basis_repr {I : Type*} [LinearOrder I] (b : Basis I R M)
-    (s : {a : Finset I // a.card = n}) :
+    (s : basisIndex I n) :
     Basis.repr (Basis.exteriorPower R n b) (ιMulti_family R n b s) = Finsupp.single s 1 := by
   ext t
   by_cases hst : s = t <;> simp [hst]
 
 lemma dualBasis_eq_ιMulti_dual {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
-    (s : {s : Finset I // s.card = n}) :
+    (s : basisIndex I n) :
     (Basis.exteriorPower R n b).dualBasis s = ιMulti_dual R n b s := by
   rw [Basis.coe_dualBasis, basis_coord]
 
 lemma dualBasis_apply_eq_det {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
-    (s : {s : Finset I // s.card = n}) (v : Fin n → M) :
+    (s : basisIndex I n) (v : Fin n → M) :
     (Basis.exteriorPower R n b).dualBasis s (ιMulti R n v) =
     (Matrix.of fun i j => b.coord (Finset.orderIsoOfFin s.1 s.2 j) (v i)).det := by
   rw [dualBasis_eq_ιMulti_dual, ιMulti_dual_apply_ιMulti]
@@ -182,7 +183,7 @@ variable {R M : Type*}
   [CommRing R] [StrongRankCondition R] [AddCommGroup M] [Module R M]
   {I : Type*} [LinearOrder I] [Fintype I] (b : Basis I R M)
 
-abbrev _root_.Module.Basis.volSet : {a : Finset I // a.card = finrank R M} :=
+abbrev _root_.Module.Basis.volSet : basisIndex I (finrank R M) :=
     ⟨Finset.univ, by rw [finrank_eq_card_basis b, Finset.card_univ]⟩
 
 /-- The induced element of maximal rank by the basis `b` on `M`. -/
@@ -255,7 +256,7 @@ noncomputable def toAlternatingMap {I : Type*} [Fintype I] [LinearOrder I] (b : 
   (Basis.exteriorPower R n b).toDualEquiv.trans <| alternatingMapLinearEquiv.symm
 
 lemma toAlternatingMap_basis {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
-    (s : {s : Finset I // s.card = n}) :
+    (s : basisIndex I n) :
     toAlternatingMap R n b (Basis.exteriorPower R n b s) =
     (((Basis.exteriorPower R n b).coord s).compAlternatingMap (ιMulti R n)) := by
   ext
@@ -263,13 +264,13 @@ lemma toAlternatingMap_basis {I : Type*} [Fintype I] [LinearOrder I] (b : Basis 
     alternatingMapLinearEquiv_symm_apply]
 
 lemma toAlternatingMap_basis_apply {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
-    (s : {s : Finset I // s.card = n}) (a : Fin n → M) :
+    (s : basisIndex I n) (a : Fin n → M) :
     toAlternatingMap R n b (Basis.exteriorPower R n b s) a =
     (Basis.exteriorPower R n b).coord s (ιMulti R n a) := by
   rw [toAlternatingMap_basis, LinearMap.compAlternatingMap_apply]
 
 lemma toAlternatingMap_symm_coord {I : Type*} [Fintype I] [LinearOrder I] (b : Basis I R M)
-    (s : {s : Finset I // s.card = n}) (f : M [⋀^Fin n]→ₗ[R] R) :
+    (s : basisIndex I n) (f : M [⋀^Fin n]→ₗ[R] R) :
     (Basis.exteriorPower R n b).coord s ((toAlternatingMap R n b).symm f) =
     f (fun i ↦ b (Finset.orderIsoOfFin s.1 s.2 i)) := by
   rw [toAlternatingMap, LinearEquiv.trans_symm, LinearEquiv.symm_symm, LinearEquiv.trans_apply,

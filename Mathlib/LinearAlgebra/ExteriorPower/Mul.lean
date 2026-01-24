@@ -58,21 +58,21 @@ lemma ιMulti_mul_ιMulti (a : Fin m → M) (b : Fin n → M) :
   exact ExteriorAlgebra.ιMulti_mul_ιMulti a b
 
 lemma ιMulti_family_mul_of_not_disjoint {m n : ℕ} {I : Type*} [LinearOrder I] (v : I → M)
-    (s : {s : Finset I // Finset.card s = m}) (t : {s : Finset I // Finset.card s = n})
-    (h : ¬Disjoint s.val t.val) :
+    (s : basisIndex I m) (t : basisIndex I n) (h : ¬Disjoint s.val t.val) :
     ιMulti_family R m v s * ιMulti_family R n v t = 0 := by
   ext
   rw [hmul_val]
   exact ExteriorAlgebra.ιMulti_family_mul_of_not_disjoint R v s t h
 
 lemma ιMulti_family_mul_of_disjoint {m n : ℕ} {I : Type*} [LinearOrder I] (v : I → M)
-    (s : {s : Finset I // Finset.card s = m}) (t : {s : Finset I // Finset.card s = n})
-    (h : Disjoint s.val t.val) :
+    (s : basisIndex I m) (t : basisIndex I n) (h : Disjoint s.val t.val) :
     ιMulti_family R m v s * ιMulti_family R n v t = ((ExteriorAlgebra.ιMulti_perm h).sign : R) •
-    ιMulti_family R (m + n) v ⟨s ∪ t, by rw [Finset.card_union_of_disjoint h, s.prop, t.prop]⟩ := by
+    ιMulti_family R (m + n) v (s.disjUnion t h) := by
   ext
-  rw [hmul_val]
-  exact ExteriorAlgebra.ιMulti_family_mul_of_disjoint R v s t h
+  rw [hmul_val, ιMulti_family_apply_coe, ιMulti_family_apply_coe,
+    ExteriorAlgebra.ιMulti_family_mul_of_disjoint R v s t h, Submodule.coe_smul]
+  congr
+  exact Eq.symm (Finset.disjUnion_eq_union s.val t.val h)
 
 variable (x : ⋀[R]^m M) (y : ⋀[R]^n M)
 
@@ -112,16 +112,13 @@ end ring
 
 section basis
 
-variable {R M : Type*} {m n : ℕ}
-  [CommRing R] [AddCommGroup M] [Module R M]
-  {I : Type*} [LinearOrder I] (b : Basis I R M)
-  (s : {s : Finset I // Finset.card s = m}) (t : {s : Finset I // Finset.card s = n})
+variable {R M : Type*} {m n : ℕ} [CommRing R] [AddCommGroup M] [Module R M]
+  {I : Type*} [LinearOrder I] (b : Basis I R M) (s : basisIndex I m) (t : basisIndex I n)
 
 lemma basis_mul_eq_ite :
     Basis.exteriorPower R m b s * Basis.exteriorPower R n b t =
     if h : Disjoint s.val t.val then (ExteriorAlgebra.ιMulti_perm h).sign •
-    (Basis.exteriorPower R (m+n) b ⟨s.val ∪ t.val,
-    by rw [Finset.card_union_of_disjoint h, s.prop, t.prop]⟩) else 0 := by
+    (Basis.exteriorPower R (m+n) b (s.disjUnion t h)) else 0 := by
   by_cases h : Disjoint s.val t.val
   · simp only [basis_apply, h, ↓reduceDIte]
     exact ιMulti_family_mul_of_disjoint _ _ _ h
@@ -135,14 +132,7 @@ lemma mulLeft_injective [Fintype I] [NoZeroDivisors R] [CharZero R] [StrongRankC
   intro x hx
   rw [← Module.Basis.forall_coord_eq_zero_iff (Basis.exteriorPower R m b)]
   intro s
-  obtain ⟨t, h⟩ : ∃ t : {a : Finset I // a.card = n}, Disjoint s.val t.val := by
-    suffices n ≤ s.valᶜ.card by
-      obtain ⟨t, t_sub, t_card⟩ := Finset.le_card_iff_exists_subset_card.mp this
-      use ⟨t, t_card⟩
-      rw [← Finset.subset_compl_iff_disjoint_left]
-      exact t_sub
-    rw [Finset.card_compl, ← finrank_eq_card_basis b, s.prop, Nat.le_sub_iff_add_le' (by linarith)]
-    exact hmn
+  obtain ⟨t, h⟩ := s.exist_set_of_card_le (by rw [← finrank_eq_card_basis b]; exact hmn)
   rw [LinearMap.ext_iff] at hx
   specialize hx <| (Basis.exteriorPower R n b) t
   rw [mulLeft_apply, LinearMap.zero_apply, ← Module.Basis.sum_repr
@@ -151,7 +141,7 @@ lemma mulLeft_injective [Fintype I] [NoZeroDivisors R] [CharZero R] [StrongRankC
   simp_rw [smul_mul_assoc, ← hmul_val, ← Submodule.coe_smul, ← Submodule.coe_sum,
     ← Subtype.ext_iff] at hx
   rw [← Module.Basis.forall_coord_eq_zero_iff (Basis.exteriorPower R (m+n) b)] at hx
-  specialize hx ⟨s ∪ t, by rw [Finset.card_union_of_disjoint h, s.prop, t.prop]⟩
+  specialize hx (s.disjUnion t h)
   simp_rw [map_sum, map_smul] at hx
   rw [Fintype.sum_eq_single s] at hx
   · rw [← Basis.coord_apply, basis_apply, basis_apply, ιMulti_family_mul_of_disjoint _ s t h] at hx
@@ -167,14 +157,7 @@ lemma mulLeft_injective [Fintype I] [NoZeroDivisors R] [CharZero R] [StrongRankC
       apply smul_eq_zero_of_right
       rw [← basis_apply, Basis.coord_apply, Module.Basis.repr_self]
       apply Finsupp.single_eq_of_ne
-      by_contra hss't
-      rw [Subtype.mk.injEq, ← Finset.coe_inj, Finset.coe_union, Finset.coe_union] at hss't
-      apply hs'
-      rw [Subtype.ext_iff, ← Finset.subset_iff_eq_of_card_le (by simp [s.prop, s'.prop]),
-        ← Finset.coe_subset]
-      apply Disjoint.subset_left_of_subset_union (u := t.val)
-      · simp only [hss't, Set.subset_union_left]
-      · simp only [Finset.disjoint_coe, hs't]
+      exact (s.disjUnion_inj_left t h s' hs't).ne.mpr hs'.symm
     · rw [basis_apply, basis_apply, ιMulti_family_mul_of_not_disjoint _ s' t hs't]
       simp
 
@@ -185,15 +168,7 @@ lemma mulRight_injective [Fintype I] [NoZeroDivisors R] [CharZero R] [StrongRank
   intro x hx
   rw [← Module.Basis.forall_coord_eq_zero_iff (Basis.exteriorPower R n b)]
   intro s
-  obtain ⟨t, h⟩ : ∃ t : {a : Finset I // a.card = m}, Disjoint t.val s.val := by
-    suffices m ≤ s.valᶜ.card by
-      obtain ⟨t, t_sub, t_card⟩ := Finset.le_card_iff_exists_subset_card.mp this
-      use ⟨t, t_card⟩
-      rw [← Finset.subset_compl_iff_disjoint_right]
-      exact t_sub
-    rw [Finset.card_compl, ← finrank_eq_card_basis b, s.prop, Nat.le_sub_iff_add_le' (by linarith)]
-    rw [add_comm]
-    exact hmn
+  obtain ⟨t, h⟩ := s.exist_set_of_card_le (by rw [← finrank_eq_card_basis b, add_comm]; exact hmn)
   rw [LinearMap.ext_iff] at hx
   specialize hx <| (Basis.exteriorPower R m b) t
   rw [mulRight_apply, LinearMap.zero_apply, ← Module.Basis.sum_repr
@@ -202,10 +177,11 @@ lemma mulRight_injective [Fintype I] [NoZeroDivisors R] [CharZero R] [StrongRank
   simp_rw [mul_smul_comm, ← hmul_val, ← Submodule.coe_smul, ← Submodule.coe_sum,
     ← Subtype.ext_iff] at hx
   rw [← Module.Basis.forall_coord_eq_zero_iff (Basis.exteriorPower R (m+n) b)] at hx
-  specialize hx ⟨t ∪ s, by rw [Finset.card_union_of_disjoint h, s.prop, t.prop, add_comm]⟩
+  specialize hx (t.disjUnion s h.symm)
   simp_rw [map_sum, map_smul] at hx
   rw [Fintype.sum_eq_single s] at hx
-  · rw [← Basis.coord_apply, basis_apply, basis_apply, ιMulti_family_mul_of_disjoint _ t s h] at hx
+  · rw [← Basis.coord_apply, basis_apply, basis_apply,
+      ιMulti_family_mul_of_disjoint _ t s h.symm] at hx
     simp only [Basis.coord_apply, map_smul, basis_repr_self, smul_eq_mul, mul_one,
       mul_eq_zero] at hx
     rcases hx with hx | hx
@@ -218,16 +194,15 @@ lemma mulRight_injective [Fintype I] [NoZeroDivisors R] [CharZero R] [StrongRank
       apply smul_eq_zero_of_right
       rw [← basis_apply, Basis.coord_apply, Module.Basis.repr_self]
       apply Finsupp.single_eq_of_ne
-      by_contra hss't
-      rw [Subtype.mk.injEq, ← Finset.coe_inj, Finset.coe_union, Finset.coe_union] at hss't
-      apply hs'
-      rw [Subtype.ext_iff, ← Finset.subset_iff_eq_of_card_le (by simp [s.prop, s'.prop]),
-        ← Finset.coe_subset]
-      apply Disjoint.subset_right_of_subset_union (t := t.val)
-      · simp only [hss't, Set.subset_union_right]
-      · simp only [Finset.disjoint_coe, disjoint_comm, hs't]
+      exact (t.disjUnion_inj_right s h.symm s' hs't).ne.mpr hs'.symm
     · rw [basis_apply, basis_apply, ιMulti_family_mul_of_not_disjoint _ t s' hs't]
       simp
+
+section top
+
+variable (hmn : m + n = finrank R M)
+
+end top
 
 end basis
 

@@ -7,6 +7,8 @@ module
 
 public import Mathlib.Algebra.Group.Nat.Defs
 public import Mathlib.Data.Finset.Card
+public import Mathlib.Data.Fintype.Card
+public import Mathlib.LinearAlgebra.Dimension.StrongRankCondition
 
 /-!
 # Helper lemmas for working with the index type of basis elements over the exterior power.
@@ -66,7 +68,43 @@ lemma eq_of_subset' (h : t.val ⊆ s.val) : s = t := by
   symm
   exact eq_of_subset t s h
 
+lemma exist_subset_of_le (s : basisIndex I m) (hn : n ≤ m) :
+    ∃ t : basisIndex I n, t.val ⊆ s.val := by
+  obtain ⟨t', ht'⟩ := Finset.le_card_iff_exists_subset_card.mp (s.prop ▸ hn)
+  use ⟨t', ht'.2⟩
+  simp only [ht']
+
 end basic
+
+section compl
+
+variable [Fintype I] [DecidableEq I] (s : basisIndex I m) (h : Fintype.card I = n)
+
+def compl : basisIndex I (n - m) := ⟨s.valᶜ, by rw [Finset.card_compl, h, s.prop]⟩
+
+@[simp]
+lemma val_compl : (s.compl h).val = s.valᶜ := rfl
+
+@[simp]
+lemma compl_inj (t : basisIndex I m) : s.compl h = t.compl h ↔ s = t := by
+  rw [← Subtype.val_inj, val_compl, val_compl, ← Subtype.val_inj]
+  exact compl_inj_iff
+
+lemma compl_injective : Function.Injective (fun s : basisIndex I m => s.compl h) :=
+  fun s t hst => (compl_inj s h t).mp hst
+
+end compl
+
+lemma exist_set_of_card_le [Fintype I] (s : basisIndex I m) (hmn : m + n ≤ Fintype.card I) :
+    ∃ t : basisIndex I n, Disjoint s.val t.val := by
+  classical
+  suffices n ≤ s.valᶜ.card by
+    obtain ⟨t, t_sub, t_card⟩ := Finset.le_card_iff_exists_subset_card.mp this
+    use ⟨t, t_card⟩
+    rw [← Finset.subset_compl_iff_disjoint_left]
+    exact t_sub
+  rw [Finset.card_compl, s.prop, Nat.le_sub_iff_add_le' (by linarith)]
+  exact hmn
 
 section cons
 
@@ -138,9 +176,9 @@ lemma disjUnion_comm :
   rw [val_cast, disjUnion_val_comm]
 
 lemma disjUnion_inj_right (r : basisIndex I n) (hsr : Disjoint s.val r.val) :
-    s.disjUnion r hsr = s.disjUnion t hst ↔ r = t := by
+    s.disjUnion t hst = s.disjUnion r hsr ↔ t = r := by
   rw [← Subtype.val_inj, val_disjUnion, val_disjUnion, ← Subtype.val_inj]
-  exact Finset.disjUnion_inj_right hsr hst
+  exact Finset.disjUnion_inj_right hst hsr
 
 lemma disjUnion_inj_left (r : basisIndex I m) (hrt : Disjoint r.val t.val) :
     s.disjUnion t hst = r.disjUnion t hrt ↔ s = r := by
