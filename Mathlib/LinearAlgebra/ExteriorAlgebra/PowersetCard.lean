@@ -99,8 +99,7 @@ def ofFinEmbEquiv : (Fin n ↪o I) ≃ powersetCard I n where
     ext
     simp [mem_coe_iff, mem_ofFinEmb_iff_mem_range]
 
-lemma ofFinEmbEquiv_apply (f : Fin n ↪o I) : ofFinEmbEquiv f = ofFinEmb f.toEmbedding :=
-  rfl
+lemma ofFinEmbEquiv_apply (f : Fin n ↪o I) : ofFinEmbEquiv f = ofFinEmb f.toEmbedding := rfl
 
 lemma ofFinEmbEquiv_symm_apply (s : powersetCard I n) :
     ofFinEmbEquiv.symm s = Finset.orderEmbOfFin s.val s.prop := rfl
