@@ -17,6 +17,13 @@ section basic
 
 variable {α β : Type*} {n : ℕ}
 
+instance instFintype [Fintype α] : Fintype (powersetCard α n) :=
+  inferInstanceAs (Fintype {a : Finset α // a.card = n})
+
+lemma exists_mem_notMem_of_ne (s t : powersetCard α n) : s ≠ t ↔ ∃ a ∈ s, a ∉ t := by
+  simp_rw [← SetLike.mem_coe, ← not_subset_iff_exists_mem_notMem]
+  exact eq_iff_subset.not
+
 def ofCard {s : Finset α} (hs : s.card = n) : powersetCard α n := ⟨s, hs⟩
 
 @[simp]
@@ -101,8 +108,16 @@ def ofFinEmbEquiv : (Fin n ↪o I) ≃ powersetCard I n where
 
 lemma ofFinEmbEquiv_apply (f : Fin n ↪o I) : ofFinEmbEquiv f = ofFinEmb f.toEmbedding := rfl
 
+lemma mem_ofFinEmbEquiv_iff_mem (f : Fin n ↪o I) (i : I) :
+    i ∈ ofFinEmbEquiv f ↔ i ∈ Set.range f := by
+  rw [ofFinEmbEquiv_apply, mem_ofFinEmb_iff_mem_range, RelEmbedding.coe_toEmbedding]
+
 lemma ofFinEmbEquiv_symm_apply (s : powersetCard I n) :
     ofFinEmbEquiv.symm s = Finset.orderEmbOfFin s.val s.prop := rfl
+
+lemma mem_range_ofFinEmbEquiv_symm_iff_mem {s : powersetCard I n} {i : I} :
+    i ∈ Set.range (ofFinEmbEquiv.symm s) ↔ i ∈ s := by
+  simp [ofFinEmbEquiv_symm_apply, range_orderEmbOfFin]
 
 end order
 

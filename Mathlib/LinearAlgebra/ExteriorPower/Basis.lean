@@ -5,7 +5,7 @@ Authors: Sophie Morel, Daniel Morrison
 -/
 module
 
-public import Mathlib.LinearAlgebra.ExteriorPower.BasisIndex
+public import Mathlib.LinearAlgebra.ExteriorPower.Basic
 public import Mathlib.LinearAlgebra.ExteriorPower.Pairing
 public import Mathlib.Order.Extension.Well
 public import Mathlib.RingTheory.Finiteness.Subalgebra
@@ -32,7 +32,7 @@ instance instFinite [Module.Finite R M] : Module.Finite R (⋀[R]^n M) := by
 
 /-! We construct a basis of `⋀[R]^n M` from a basis of `M`. -/
 
-open Module
+open Module Set
 
 variable (R n)
 
@@ -42,55 +42,47 @@ applying the `exteriorPower.linearForm` construction to the family of linear for
 given by the coordinates of `b` indexed by elements of `s` (ordered using the given order on
 `I`). -/
 noncomputable def ιMulti_dual {I : Type*} [LinearOrder I] (b : Basis I R M)
-    (s : {a : Finset I // a.card = n}) : Module.Dual R (⋀[R]^n M) :=
-  pairingDual R M n (ιMulti R n (fun i ↦ b.coord (Finset.orderIsoOfFin s.1 s.2 i)))
+    (s : powersetCard I n) : Module.Dual R (⋀[R]^n M) :=
+  pairingDual R M n (ιMulti_family R n b.coord s)
 
 @[simp]
 lemma ιMulti_dual_apply_ιMulti {I : Type*} [LinearOrder I] (b : Basis I R M)
-    (s : {a : Finset I // a.card = n}) (v : Fin n → M) :
+    (s : powersetCard I n) (v : Fin n → M) :
     ιMulti_dual R n b s (ιMulti R n v) =
-    (Matrix.of fun i j => b.coord (Finset.orderIsoOfFin s.1 s.2 j) (v i)).det := by
-  rw [ιMulti_dual, pairingDual_ιMulti_ιMulti]
+    (Matrix.of fun i j => b.coord (powersetCard.ofFinEmbEquiv.symm s j) (v i)).det := by
+  simp [ιMulti_dual, ιMulti_family, pairingDual_ιMulti_ιMulti]
 
 /-- Let `b` be a basis of `M` indexed by a linearly ordered type `I` and `s` be a finset of `I`
 of cardinality `n`. If we apply the linear form on `⋀[R]^n M` defined by `b` and `s`
 to the exterior product of the `b i` for `i ∈ s`, then we get `1`. -/
 lemma ιMulti_dual_apply_diag {I : Type*} [LinearOrder I] (b : Basis I R M)
-    (s : {a : Finset I // a.card = n}) :
+    (s : powersetCard I n) :
     ιMulti_dual R n b s (ιMulti_family R n b s) = 1 := by
   rw [ιMulti_family, ιMulti_dual_apply_ιMulti]
-  suffices Matrix.of (fun i j => b.coord (Finset.orderIsoOfFin s.1 s.2 j)
-    (b (Finset.orderIsoOfFin s.1 s.2 i))) = 1 by
-    rw [this, Matrix.det_one]
+  suffices Matrix.of (fun i j => b.coord (powersetCard.ofFinEmbEquiv.symm s j)
+    (b (powersetCard.ofFinEmbEquiv.symm s i))) = 1 by
+    simp_rw [Function.comp_apply, this, Matrix.det_one]
   ext
   simp [Matrix.one_apply, Finsupp.single_apply]
-
-lemma ιMulti_apply_nondiag_aux {I : Type*} [LinearOrder I]
-    (s t : {a : Finset I // a.card = n}) (hst : s ≠ t) :
-    ∃ (i : Fin n), ∀ (j : Fin n),
-    (Finset.orderIsoOfFin s.1 s.2 i).1 ≠ (Finset.orderIsoOfFin t.1 t.2 j).1 := by
-  by_contra! habs
-  apply hst
-  rw [Subtype.ext_iff]
-  apply Finset.eq_of_subset_of_card_le _ (by rw [s.2, t.2])
-  intro a has
-  obtain ⟨b, hb⟩ := habs ((Finset.orderIsoOfFin s.1 s.2).symm ⟨a, has⟩)
-  simp only [OrderIso.apply_symm_apply] at hb
-  rw [hb]
-  simp
 
 /-- Let `b` be a basis of `M` indexed by a linearly ordered type `I` and `s` be a finset of `I`
 of cardinality `n`. Let `t` be a finset of `I` of cardinality `n` such that `s ≠ t`. If we apply
 the linear form on `⋀[R]^n M` defined by `b` and `s` to the exterior product of the
 `b i` for `i ∈ t`, then we get `0`. -/
 lemma ιMulti_dual_apply_nondiag {I : Type*} [LinearOrder I] (b : Basis I R M)
-    (s t : {a : Finset I // a.card = n}) (hst : s ≠ t) :
+    (s t : powersetCard I n) (hst : s ≠ t) :
     ιMulti_dual R n b s (ιMulti_family R n b t) = 0 := by
   rw [ιMulti_family, ιMulti_dual_apply_ιMulti]
-  obtain ⟨i, hi⟩ := ιMulti_apply_nondiag_aux n s t hst
-  apply Matrix.det_eq_zero_of_column_eq_zero i
-  simp_rw [Matrix.of_apply, Basis.coord_apply, Basis.repr_self]
-  exact fun _ ↦ Finsupp.single_eq_of_ne (hi _)
+  obtain ⟨i, his, hit⟩ := (powersetCard.exists_mem_notMem_of_ne s t).mp hst
+  obtain ⟨k, rfl⟩ := powersetCard.mem_range_ofFinEmbEquiv_symm_iff_mem.mpr his
+  apply Matrix.det_eq_zero_of_column_eq_zero k
+  simp_rw [Matrix.of_apply, Basis.coord_apply, Function.comp_apply, Basis.repr_self]
+  intro j
+  apply Finsupp.single_eq_of_ne
+  by_contra! h
+  apply hit
+  rw [h, powersetCard.ofFinEmbEquiv_symm_apply, ← powersetCard.mem_coe_iff]
+  exact Finset.orderEmbOfFin_mem t.val t.prop j
 
 /-- If `b` is a basis of `M` (indexed by a linearly ordered type), then the family
 `exteriorPower.ιMulti R n b` of the `n`-fold exterior products of its elements is linearly
@@ -104,7 +96,7 @@ lemma ιMulti_family_linearIndependent_ofBasis {I : Type*} [LinearOrder I] (b : 
 /-- If `b` is a basis of `M` (indexed by a linearly ordered type), the basis of the `n`th
 exterior power of `M` formed by the `n`-fold exterior products of elements of `b`. -/
 noncomputable def _root_.Basis.exteriorPower {I : Type*} [LinearOrder I] (b : Basis I R M) :
-    Basis (basisIndex I n) R (⋀[R]^n M) :=
+    Basis (powersetCard I n) R (⋀[R]^n M) :=
   Basis.mk (ιMulti_family_linearIndependent_ofBasis _ _ _)
     (eq_top_iff.mp <| ιMulti_family_span_of_span R b.span_eq)
 
@@ -113,7 +105,7 @@ lemma coe_basis {I : Type*} [LinearOrder I] (b : Basis I R M) :
     DFunLike.coe (Basis.exteriorPower R n b) = ιMulti_family R n b :=
   Basis.coe_mk _ _
 
-lemma basis_apply {I : Type*} [LinearOrder I] (b : Basis I R M) (s : basisIndex I n) :
+lemma basis_apply {I : Type*} [LinearOrder I] (b : Basis I R M) (s : powersetCard I n) :
     Basis.exteriorPower R n b s = ιMulti_family R n b s := by
   rw [coe_basis]
 
@@ -121,7 +113,7 @@ lemma basis_apply {I : Type*} [LinearOrder I] (b : Basis I R M) (s : basisIndex 
 basis of the `n`th exterior power of `M`, indexed by the set of finsets `s` of `I` of cardinality
 `n`, then the coordinate function of `B` at `s` is the linear form on the `n`th exterior power
 defined by `b` and `s` in `exteriorPower.ιMulti_dual`. -/
-lemma basis_coord {I : Type*} [LinearOrder I] (b : Basis I R M) (s : basisIndex I n) :
+lemma basis_coord {I : Type*} [LinearOrder I] (b : Basis I R M) (s : powersetCard I n) :
     Basis.coord (Basis.exteriorPower R n b) s = ιMulti_dual R n b s := by
   apply LinearMap.ext_on (ιMulti_family_span_of_span R (Basis.span_eq b))
   rintro x ⟨t, rfl⟩
@@ -132,21 +124,22 @@ lemma basis_coord {I : Type*} [LinearOrder I] (b : Basis I R M) (s : basisIndex 
       Finsupp.single_eq_of_ne hst]
 
 lemma basis_repr_apply {I : Type*} [LinearOrder I] (b : Basis I R M) (x : ⋀[R]^n M)
-    (s : basisIndex I n) : Basis.repr (Basis.exteriorPower R n b) x s = ιMulti_dual R n b s x := by
+    (s : powersetCard I n) :
+    Basis.repr (Basis.exteriorPower R n b) x s = ιMulti_dual R n b s x := by
   simpa [← Basis.coord_apply] using LinearMap.congr_fun (basis_coord R n b s) x
 
 @[simp]
-lemma basis_repr_self {I : Type*} [LinearOrder I] (b : Basis I R M) (s : basisIndex I n) :
+lemma basis_repr_self {I : Type*} [LinearOrder I] (b : Basis I R M) (s : powersetCard I n) :
     Basis.repr (Basis.exteriorPower R n b) (ιMulti_family R n b s) s = 1 := by
   simpa [basis_repr_apply] using ιMulti_dual_apply_diag R n b s
 
 @[simp]
 lemma basis_repr_ne {I : Type*} [LinearOrder I] (b : Basis I R M)
-    {s t : basisIndex I n} (hst : s ≠ t) :
+    {s t : powersetCard I n} (hst : s ≠ t) :
     Basis.repr (Basis.exteriorPower R n b) (ιMulti_family R n b s) t = 0 := by
   simpa [basis_repr_apply] using ιMulti_dual_apply_nondiag R n b t s hst.symm
 
-lemma basis_repr {I : Type*} [LinearOrder I] (b : Basis I R M) (s : basisIndex I n) :
+lemma basis_repr {I : Type*} [LinearOrder I] (b : Basis I R M) (s : powersetCard I n) :
     Basis.repr (Basis.exteriorPower R n b) (ιMulti_family R n b s) = Finsupp.single s 1 := by
   ext t
   by_cases hst : s = t <;> simp [hst]
@@ -168,8 +161,8 @@ lemma finrank_eq [hfree : Module.Free R M] [Module.Finite R M] :
     Nat.choose (Module.finrank R M) n := by
   letI : LinearOrder hfree.ChooseBasisIndex := IsWellFounded.wellOrderExtension emptyWf.rel
   let B := Basis.exteriorPower R n hfree.chooseBasis
-  rw [Module.finrank_eq_card_basis hfree.chooseBasis,
-    Module.finrank_eq_card_basis B, Fintype.card_finset_len]
+  rw [Module.finrank_eq_card_basis hfree.chooseBasis, Module.finrank_eq_card_basis B,
+    Fintype.card_eq_nat_card, powersetCard.card, Fintype.card_eq_nat_card]
 
 /-! Results that only hold over a field. -/
 
@@ -188,7 +181,7 @@ lemma ιMulti_family_linearIndependent_field {I : Type*} [LinearOrder I] {v : I 
   rw [Submodule.coe_subtype, Function.comp_apply, Basis.span_apply]
 
 instance instNonempty {I : Type*} [LinearOrder I] [Nonempty {v : I → E // LinearIndependent K v}] :
-    Nonempty {v : (basisIndex I n) → (⋀[K]^n) E // LinearIndependent K v} :=
+    Nonempty {v : (powersetCard I n) → (⋀[K]^n) E // LinearIndependent K v} :=
   Nonempty.map (fun v : {v : I → E // LinearIndependent K v} ↦
     ⟨ιMulti_family K n v, ιMulti_family_linearIndependent_field n v.2⟩) ‹_›
 
