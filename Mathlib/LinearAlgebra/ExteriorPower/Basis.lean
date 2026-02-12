@@ -32,7 +32,7 @@ instance instFinite [Module.Finite R M] : Module.Finite R (⋀[R]^n M) := by
 
 /-! We construct a basis of `⋀[R]^n M` from a basis of `M`. -/
 
-open Module Set
+open Module Set Set.powersetCard
 
 variable (R n)
 
@@ -73,8 +73,8 @@ lemma ιMulti_dual_apply_nondiag {I : Type*} [LinearOrder I] (b : Basis I R M)
     (s t : powersetCard I n) (hst : s ≠ t) :
     ιMulti_dual R n b s (ιMulti_family R n b t) = 0 := by
   rw [ιMulti_family, ιMulti_dual_apply_ιMulti]
-  obtain ⟨i, his, hit⟩ := (powersetCard.exists_mem_notMem_of_ne s t).mp hst
-  obtain ⟨k, rfl⟩ := powersetCard.mem_range_ofFinEmbEquiv_symm_iff_mem.mpr his
+  obtain ⟨i, his, hit⟩ := (exists_mem_notMem_iff_ne s t).mp hst
+  obtain ⟨k, rfl⟩ := (mem_range_ofFinEmbEquiv_symm_iff_mem s i).mpr his
   apply Matrix.det_eq_zero_of_column_eq_zero k
   simp_rw [Matrix.of_apply, Basis.coord_apply, Function.comp_apply, Basis.repr_self]
   intro j
