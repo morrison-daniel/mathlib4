@@ -51,7 +51,6 @@ lemma mem_ofFinEmbEquiv_iff_mem_range (f : Fin n ↪o I) (i : I) :
     i ∈ ofFinEmbEquiv f ↔ i ∈ range f := by
   simp [ofFinEmbEquiv_apply]
 
-@[simp]
 lemma mem_range_ofFinEmbEquiv_symm_iff_mem (s : powersetCard I n) (i : I) :
     i ∈ range (ofFinEmbEquiv.symm s) ↔ i ∈ s := by
   simp [ofFinEmbEquiv_symm_apply]
