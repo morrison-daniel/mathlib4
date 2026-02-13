@@ -41,7 +41,7 @@ variable (R n)
 applying the `exteriorPower.linearForm` construction to the family of linear forms
 given by the coordinates of `b` indexed by elements of `s` (ordered using the given order on
 `I`). -/
-noncomputable def ιMulti_dual {I : Type*} [LinearOrder I] (b : Basis I R M)
+noncomputable def ιMultiDual {I : Type*} [LinearOrder I] (b : Basis I R M)
     (s : powersetCard I n) : Module.Dual R (⋀[R]^n M) :=
   pairingDual R M n (ιMulti_family R n b.coord s)
 
@@ -93,16 +93,17 @@ lemma ιMulti_family_linearIndependent_ofBasis {I : Type*} [LinearOrder I] (b : 
     (fun _ _ h => ιMulti_dual_apply_nondiag R n b _ _ h)
     (fun _ => ιMulti_dual_apply_diag _ _ _ _)
 
+variable {R} in
 /-- If `b` is a basis of `M` (indexed by a linearly ordered type), the basis of the `n`th
 exterior power of `M` formed by the `n`-fold exterior products of elements of `b`. -/
-noncomputable def _root_.Basis.exteriorPower {I : Type*} [LinearOrder I] (b : Basis I R M) :
+noncomputable def _root_.Module.Basis.exteriorPower {I : Type*} [LinearOrder I] (b : Basis I R M) :
     Basis (powersetCard I n) R (⋀[R]^n M) :=
   Basis.mk (ιMulti_family_linearIndependent_ofBasis _ _ _)
     (eq_top_iff.mp <| ιMulti_family_span_of_span R b.span_eq)
 
 @[simp]
 lemma coe_basis {I : Type*} [LinearOrder I] (b : Basis I R M) :
-    DFunLike.coe (Basis.exteriorPower R n b) = ιMulti_family R n b :=
+    DFunLike.coe (b.exteriorPower n) = ιMulti_family R n b :=
   Basis.coe_mk _ _
 
 lemma basis_apply {I : Type*} [LinearOrder I] (b : Basis I R M) (s : powersetCard I n) :
@@ -157,8 +158,7 @@ variable [StrongRankCondition R]
 /-- If `R` satisfies the strong rank condition and `M` is finite free of rank `r`, then
 the `n`th exterior power of `M` is of finrank `Nat.choose r n`. -/
 lemma finrank_eq [hfree : Module.Free R M] [Module.Finite R M] :
-    Module.finrank R (⋀[R]^n M) =
-    Nat.choose (Module.finrank R M) n := by
+    Module.finrank R (⋀[R]^n M) = Nat.choose (Module.finrank R M) n := by
   letI : LinearOrder hfree.ChooseBasisIndex := IsWellFounded.wellOrderExtension emptyWf.rel
   let B := Basis.exteriorPower R n hfree.chooseBasis
   rw [Module.finrank_eq_card_basis hfree.chooseBasis, Module.finrank_eq_card_basis B,
