@@ -148,16 +148,16 @@ lemma basis_repr {I : Type*} [LinearOrder I] (b : Basis I R M) (s : powersetCard
 /-! ### Freeness and dimension of `⋀[R]^n M. -/
 
 /-- If `M` is a free module, then so is its `n`th exterior power. -/
-instance instFree [hfree : Module.Free R M] : Module.Free R (⋀[R]^n M) :=
+instance instFree [Module.Free R M] : Module.Free R (⋀[R]^n M) :=
   have ⟨I, b⟩ := hfree.exists_basis
   letI : LinearOrder I := IsWellFounded.wellOrderExtension emptyWf.rel
   Module.Free.of_basis (b.exteriorPower n)
 
-variable [StrongRankCondition R]
+variable [Nontrivial R]
 
 /-- If `R` satisfies the strong rank condition and `M` is finite free of rank `r`, then
 the `n`th exterior power of `M` is of finrank `Nat.choose r n`. -/
-lemma finrank_eq [hfree : Module.Free R M] [Module.Finite R M] :
+lemma finrank_eq [Module.Free R M] [Module.Finite R M] :
     Module.finrank R (⋀[R]^n M) = Nat.choose (Module.finrank R M) n := by
   letI : LinearOrder hfree.ChooseBasisIndex := IsWellFounded.wellOrderExtension emptyWf.rel
   let B := hfree.chooseBasis.exteriorPower n
