@@ -112,6 +112,11 @@ end map
 
 section of
 
+/-- The coercion of a finite set to its corresponding element of `Set.powersetCard`. -/
+def ofCard {s : Finset α} (s_card : s.card = n) : powersetCard α n := ⟨s, mem_iff.mpr s_card⟩
+
+lemma val_ofCard {s : Finset α} (s_card : s.card = n) : Subtype.val (ofCard s_card) = s := rfl
+
 /-- The equivalence sending `a : α` to the singleton `{a}`. -/
 noncomputable def ofSingleton : α ≃ powersetCard α 1 where
   toFun a := ⟨{a}, Finset.card_singleton a⟩
@@ -257,5 +262,16 @@ theorem nontrivial_iff [Finite α] :
   rw [← Finite.one_lt_card_iff_nontrivial, powersetCard.card, Nat.one_lt_iff_ne_zero_and_ne_one,
     ne_eq, Nat.choose_eq_zero_iff, ne_eq, Nat.choose_eq_one_iff]
   grind
+
+/-- The bijection between the product of `(n : ℕ)` and the finsets of `α` of cardinality `n` and
+`Finset α`. -/
+def prodEquiv : (n : ℕ) × (powersetCard α n) ≃ Finset α where
+  toFun x := x.2
+  invFun x := ⟨x.card, ⟨x, by rw [mem_iff]⟩⟩
+  left_inv x := by ext <;> simp
+
+lemma prodEquiv_apply (x : (n : ℕ) × (powersetCard α n)) : prodEquiv x = x.2 := rfl
+
+lemma prodEquiv_symm_apply (s : Finset α) : prodEquiv.symm s = ⟨s.card, ⟨s, by rw [mem_iff]⟩⟩ := rfl
 
 end Set.powersetCard
