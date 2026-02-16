@@ -181,6 +181,24 @@ theorem compl_symm : (compl hm).symm = compl ((n.add_comm m).trans hm) := rfl
 
 end compl
 
+section disjUnion
+
+variable {m : ℕ} {s : powersetCard α m} {t : powersetCard α n} (hst : Disjoint s.val t.val)
+
+def disjUnion : powersetCard α (m + n) :=
+  ⟨s.val.disjUnion t hst, by rw [mem_iff, Finset.card_disjUnion, card_eq s, card_eq t]⟩
+
+variable {hst}
+
+@[simp]
+theorem coe_disjUnion : (disjUnion hst : Finset α) = s.val.disjUnion t hst := rfl
+
+@[simp]
+theorem mem_disjUnion {a : α} : a ∈ disjUnion hst ↔ a ∈ s ∨ a ∈ t :=
+  Finset.mem_disjUnion (h := hst)
+
+end disjUnion
+
 variable (α n)
 
 theorem coe_finset [Fintype α] :
