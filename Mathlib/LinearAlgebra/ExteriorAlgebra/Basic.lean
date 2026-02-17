@@ -312,6 +312,18 @@ theorem ιMulti_succ_curryLeft {n : ℕ} (m : M) :
       (LinearMap.mulLeft R (ι R m)).compAlternatingMap (ιMulti R n) := by
   ext; simp
 
+lemma ιMulti_eq_zero_of_not_inj {n : ℕ} {v : Fin n → M} (hv : ¬Function.Injective v) :
+  ιMulti R n v = 0 :=
+AlternatingMap.map_eq_zero_of_not_injective (ιMulti R n) v hv
+
+lemma ιMulti_mul_ιMulti {m n : ℕ} (a : Fin m → M) (b : Fin n → M) :
+    ιMulti R m a * ιMulti R n b = ιMulti R (m+n) (Fin.append a b) := by
+  simp only [ιMulti_apply]
+  rw [show (fun i => (ι R) (Fin.append a b i)) = (ι R) ∘ Fin.append a b by ext; simp]
+  rw [← List.map_ofFn, List.ofFn_fin_append, List.map_append, List.prod_append]
+  simp only [List.map_ofFn]
+  congr
+
 variable (R)
 
 /-- The image of `ExteriorAlgebra.ιMulti R n` is contained in the `n`th exterior power. -/
@@ -344,6 +356,50 @@ family of `n`fold exterior products of elements of `v`, seen as members of the e
 abbrev ιMulti_family (n : ℕ) {I : Type*} [LinearOrder I] (v : I → M)
     (s : Set.powersetCard I n) : ExteriorAlgebra R M :=
   ιMulti R n (v ∘ (Set.powersetCard.ofFinEmbEquiv.symm s))
+
+open Set Set.powersetCard
+
+lemma ιMulti_family_mul_of_not_disjoint {m n : ℕ} {I : Type*} [LinearOrder I] (v : I → M)
+    (s : powersetCard I m) (t : powersetCard I n) (h : ¬Disjoint s.val t.val) :
+    ιMulti_family R m v s * ιMulti_family R n v t = 0 := by
+  rw [Finset.not_disjoint_iff] at h
+  obtain ⟨i, his, hit⟩ := h
+  obtain ⟨j, hj⟩ := (mem_range_ofFinEmbEquiv_symm_iff_mem s i).mpr his
+  obtain ⟨k, hk⟩ := (mem_range_ofFinEmbEquiv_symm_iff_mem t i).mpr hit
+  simp only [ιMulti_family, ιMulti_mul_ιMulti]
+  apply AlternatingMap.map_eq_zero_of_eq (i := Fin.castAdd n j) (j := Fin.natAdd m k)
+  · simp [hj, hk]
+  · apply ne_of_lt
+    apply lt_of_lt_of_le (b := m) <;> simp
+
+def ιMulti_perm {m n : ℕ} {I : Type*} [LinearOrder I] {s : powersetCard I m}
+    {t : powersetCard I n} (h : Disjoint s.val t.val) :
+    Equiv.Perm (Fin (m + n)) :=
+  finSumFinEquiv.symm.trans ((Equiv.sumCongr
+  (Finset.orderIsoOfFin s.val s.prop).toEquiv.symm
+  (Finset.orderIsoOfFin t.val t.prop).toEquiv.symm).symm.trans
+  ((Equiv.Finset.union _ _ h).trans
+  ((Finset.orderIsoOfFin (s.val ∪ t.val)
+  (by rw [Finset.card_union_of_disjoint h, s.prop, t.prop]))).toEquiv.symm))
+
+lemma ιMulti_family_mul_of_disjoint {m n : ℕ} {I : Type*} [LinearOrder I] (v : I → M)
+    (s : powersetCard I m) (t : powersetCard I n) (h : Disjoint s.val t.val) :
+    ιMulti_family R m v s * ιMulti_family R n v t = (ιMulti_perm h).sign •
+    ιMulti_family R (m + n) v (disjUnion h) := by
+  simp only [ιMulti_family, ιMulti_mul_ιMulti]
+  rw [← AlternatingMap.map_perm, ιMulti_perm]
+  congr
+  ext i
+  by_cases hi : i < m
+  · rw [← Fin.castAdd_castLT n i hi, Fin.append_left]
+    simp only [ofFinEmbEquiv_symm_apply, Function.comp_apply]
+    congr 1
+    simp [- Fin.castAdd_castLT, ← Finset.coe_orderIsoOfFin_apply]
+  · push_neg at hi
+    rw [← Fin.natAdd_subNat_cast hi, Fin.append_right]
+    simp only [ofFinEmbEquiv_symm_apply, Function.comp_apply]
+    congr 1
+    simp [- Fin.natAdd_subNat_cast, ← Finset.coe_orderIsoOfFin_apply]
 
 variable {R}
 
