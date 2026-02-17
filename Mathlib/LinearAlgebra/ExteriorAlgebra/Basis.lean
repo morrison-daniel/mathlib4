@@ -1,7 +1,7 @@
 /-
-Copyright (c) 2026 Eric Wieser. All rights reserved.
+Copyright (c) 2026 Daniel Morrison. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Eric Wieser
+Authors: Daniel Morrison
 -/
 module
 
@@ -18,7 +18,7 @@ namespace ExteriorAlgebra
 
 open Module Set Set.powersetCard exteriorPower
 
-variable {R K M E : Type*} {n : ℕ} {I : Type*} [LinearOrder I] [CommRing R] [Field K]
+variable {R K M E : Type*} {m n : ℕ} {I : Type*} [LinearOrder I] [CommRing R] [Field K]
   [AddCommGroup M] [Module R M] [AddCommGroup E] [Module K E] (b : Module.Basis I R M)
 
 /-- If `b` is a basis of `M` (indexed by a linearly ordered type), the basis of the exterior
@@ -40,10 +40,25 @@ lemma basis_apply_ofCard {s : Finset I} (s_card : s.card = n) :
   subst s_card
   rfl
 
-lemma basis_eq_coe_basis (s : powersetCard I n) :
-    b.ExteriorAlgebra s = (b.exteriorPower n s : ExteriorAlgebra R M) := by
-  rw [basis_apply_ofCard, exteriorPower.basis_apply, ιMulti_family_apply_coe]
+variable (s : powersetCard I m) (t : powersetCard I n)
+
+lemma basis_apply_powersetCard :
+    b.ExteriorAlgebra s = ιMulti_family R m b s := by
+  rw [basis_apply_ofCard]
   · rfl
   · exact card_eq s
+
+lemma basis_eq_coe_basis :
+    b.ExteriorAlgebra s = (b.exteriorPower m s : ExteriorAlgebra R M) := by
+  rw [basis_apply_powersetCard, exteriorPower.basis_apply, ιMulti_family_apply_coe]
+
+lemma basis_mul_of_not_disjoint (h : ¬Disjoint s.val t.val) :
+    b.ExteriorAlgebra s * b.ExteriorAlgebra t = 0 := by
+  simpa only [basis_apply_powersetCard] using ιMulti_family_mul_of_not_disjoint R b s t h
+
+lemma basis_mul_of_disjoint (h : Disjoint s.val t.val) :
+    b.ExteriorAlgebra s * b.ExteriorAlgebra t =
+    (ιMulti_perm h).sign • b.ExteriorAlgebra (disjUnion h) := by
+  simpa only [basis_apply_powersetCard] using ιMulti_family_mul_of_disjoint R b s t h
 
 end ExteriorAlgebra
